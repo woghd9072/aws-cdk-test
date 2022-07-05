@@ -6,6 +6,8 @@ import * as ddb from "aws-cdk-lib/aws-dynamodb";
 import * as lambda from "aws-cdk-lib/aws-lambda";
 import { NodejsFunction } from "aws-cdk-lib/aws-lambda-nodejs";
 import * as apigateway from "aws-cdk-lib/aws-apigateway";
+import * as s3 from "aws-cdk-lib/aws-s3";
+import { Runtime } from 'aws-cdk-lib/aws-lambda';
 
 export class CdkTestStack extends Stack {
   constructor(scope: Construct, id: string, props?: StackProps) {
@@ -14,21 +16,26 @@ export class CdkTestStack extends Stack {
     // The code that defines your stack goes here
 
     // example resource
-    const queue = new sqs.Queue(this, 'CdkTestQueue', {
-      visibilityTimeout: Duration.seconds(300)
-    });
-
     const topic = new sns.Topic(this, 'topic', {
-      displayName: 'topic-jaehong',
-      topicName: 'topic-jaehong'
+      displayName: 'test-topic-jaehong',
+      topicName: 'test-topic-jaehong'
     });
 
     const table = new ddb.Table(this, 'table', {
-      tableName: 'table-jaehong',
+      tableName: 'test-table-jaehong',
       partitionKey: {
         name: 'isbn',
         type: ddb.AttributeType.NUMBER
       }
+    });
+
+    const bucket = new s3.Bucket(this, 'bucket', {
+      bucketName: 'test-bucket-jaehong'
+    });
+
+    const queue = new sqs.Queue(this, 'CdkTestQueue', {
+      visibilityTimeout: Duration.seconds(300),
+      queueName: 'test-queue-jaehong'
     });
 
     const func = new lambda.Function(this, 'func-py', {
@@ -42,15 +49,18 @@ export class CdkTestStack extends Stack {
     })
 
     const restFunc = new NodejsFunction(this, 'ts-rest-func', {
-      entry: 'codes/lambda/rest/src/index.ts'
+      functionName: 'func-rest-jaehong-ts',
+      entry: 'codes/lambda/rest/src/index.ts',
+      runtime: Runtime.NODEJS_16_X
     });
 
     const api = new apigateway.LambdaRestApi(this, 'rest-gw', {
       restApiName: 'rest-jaehong',
-      handler: restFunc
+      handler: restFunc,
+      proxy: false
     });
 
-    // const test = api.root.addResource('api/test');
-    // test.addMethod('GET', new apigateway.LambdaIntegration(restFunc));
+    const test = api.root.addResource('test');
+    test.addMethod('GET', new apigateway.LambdaIntegration(restFunc));
   }
 }
